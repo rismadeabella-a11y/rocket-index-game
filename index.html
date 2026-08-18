@@ -2,13 +2,15 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chroma Velocity - Neon Rocket Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chroma Velocity - Cross Device</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
         }
         body {
             background-color: #050510;
@@ -19,26 +21,32 @@
             justify-content: center;
             align-items: center;
             height: 100vh;
+            touch-action: none;
         }
         #game-container {
             position: relative;
-            box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
-            border: 2px solid #00f0ff;
-            border-radius: 8px;
-            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         canvas {
-            display: block;
             background: radial-gradient(circle at center, #0b0b26 0%, #020208 100%);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.2);
+            border: 2px solid #00f0ff;
+            max-width: 100%;
+            max-height: 100%;
         }
         #ui {
             position: absolute;
-            top: 15px;
-            left: 15px;
-            font-size: 18px;
+            top: 20px;
+            left: 20px;
+            font-size: 20px;
             font-weight: bold;
             text-shadow: 0 0 8px #ff007f;
             pointer-events: none;
+            z-index: 10;
         }
     </style>
 </head>
@@ -46,7 +54,7 @@
 
 <div id="game-container">
     <div id="ui">SCORE: <span id="score">0</span></div>
-    <canvas id="gameCanvas" width="800" height="500"></canvas>
+    <canvas id="gameCanvas" width="800" height="450"></canvas>
 </div>
 
 <script>
@@ -57,26 +65,62 @@ const scoreEl = document.getElementById('score');
 let score = 0;
 let gameOver = false;
 
-// Kontrol Input
+// Kontrol Keyboard
 const keys = {};
 window.addEventListener('keydown', e => keys[e.key] = true);
 window.addEventListener('keyup', e => keys[e.key] = false);
 
-// Objek Roket Futuristik
+// Roket
 const rocket = {
     x: 100,
     y: canvas.height / 2,
+    targetY: canvas.height / 2,
+    targetX: 100,
     width: 30,
-    height: 15,
-    speed: 5,
+    height: 16,
+    speed: 6,
     color: '#00f0ff'
 };
 
-// Array Partikel & Obstacle
+// Kontrol Sentuh (Mobile/Tablet)
+let isTouching = false;
+
+function getCanvasCoordinates(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+    return {
+        x: (clientX - rect.left) * scaleX,
+        y: (clientY - rect.top) * scaleY
+    };
+}
+
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    isTouching = true;
+    const coords = getCanvasCoordinates(e);
+    rocket.targetX = coords.x;
+    rocket.targetY = coords.y;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (isTouching) {
+        const coords = getCanvasCoordinates(e);
+        rocket.targetX = coords.x;
+        rocket.targetY = coords.y;
+    }
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => isTouching = false);
+
+// Partikel & Obstacle
 const particles = [];
 const obstacles = [];
 
-// Partikel Trail Neon
 class Particle {
     constructor(x, y) {
         this.x = x;
@@ -90,13 +134,13 @@ class Particle {
     update() {
         this.x += this.speedX;
         this.y += this.speedY;
-        this.life -= 0.03;
+        this.life -= 0.04;
     }
     draw() {
         ctx.save();
         ctx.globalAlpha = Math.max(this.life, 0);
         ctx.fillStyle = this.color;
-        ctx.shadowBlur = 10;
+        ctx.shadowBlur = 8;
         ctx.shadowColor = this.color;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -105,13 +149,12 @@ class Particle {
     }
 }
 
-// Rintangan Asteroid
 class Obstacle {
     constructor() {
         this.x = canvas.width + 30;
         this.y = Math.random() * (canvas.height - 40) + 20;
-        this.size = Math.random() * 20 + 15;
-        this.speed = Math.random() * 3 + 3;
+        this.size = Math.random() * 18 + 12;
+        this.speed = Math.random() * 3 + 3.5;
         this.color = '#39ff14';
     }
     update() {
@@ -121,7 +164,7 @@ class Obstacle {
         ctx.save();
         ctx.strokeStyle = this.color;
         ctx.lineWidth = 2;
-        ctx.shadowBlur = 12;
+        ctx.shadowBlur = 10;
         ctx.shadowColor = this.color;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -130,11 +173,22 @@ class Obstacle {
     }
 }
 
-function handleInput() {
-    if (keys['ArrowUp'] || keys['w']) if (rocket.y > 20) rocket.y -= rocket.speed;
-    if (keys['ArrowDown'] || keys['s']) if (rocket.y < canvas.height - 20) rocket.y += rocket.speed;
-    if (keys['ArrowLeft'] || keys['a']) if (rocket.x > 20) rocket.x -= rocket.speed;
-    if (keys['ArrowRight'] || keys['d']) if (rocket.x < canvas.width - 40) rocket.x += rocket.speed;
+function updateRocketPosition() {
+    // Gerakan via Keyboard
+    if (keys['ArrowUp'] || keys['w']) rocket.y -= rocket.speed;
+    if (keys['ArrowDown'] || keys['s']) rocket.y += rocket.speed;
+    if (keys['ArrowLeft'] || keys['a']) rocket.x -= rocket.speed;
+    if (keys['ArrowRight'] || keys['d']) rocket.x += rocket.speed;
+
+    // Gerakan via Touch (Interpolasi halus menuju posisi sentuhan)
+    if (isTouching) {
+        rocket.x += (rocket.targetX - rocket.x) * 0.15;
+        rocket.y += (rocket.targetY - rocket.y) * 0.15;
+    }
+
+    // Batas Layar
+    rocket.x = Math.max(20, Math.min(canvas.width - 40, rocket.x));
+    rocket.y = Math.max(20, Math.min(canvas.height - 20, rocket.y));
 }
 
 function drawRocket() {
@@ -143,7 +197,6 @@ function drawRocket() {
     ctx.shadowBlur = 15;
     ctx.shadowColor = rocket.color;
     
-    // Bentuk Roket Futuristik (Segitiga Presisi)
     ctx.beginPath();
     ctx.moveTo(rocket.x + rocket.width, rocket.y);
     ctx.lineTo(rocket.x, rocket.y - rocket.height / 2);
@@ -153,12 +206,11 @@ function drawRocket() {
     ctx.fill();
     ctx.restore();
 
-    // Tambah Partikel Trail di belakang roket
     particles.push(new Particle(rocket.x, rocket.y));
 }
 
 function spawnObstacles() {
-    if (Math.random() < 0.03) {
+    if (Math.random() < 0.035) {
         obstacles.push(new Obstacle());
     }
 }
@@ -183,17 +235,17 @@ function gameLoop() {
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    handleInput();
+    updateRocketPosition();
     drawRocket();
 
-    // Update Partikel
+    // Loop Partikel
     for (let i = particles.length - 1; i >= 0; i--) {
         particles[i].update();
         particles[i].draw();
         if (particles[i].life <= 0) particles.splice(i, 1);
     }
 
-    // Update Obstacle & Deteksi Tabrakan
+    // Loop Obstacle
     spawnObstacles();
     for (let i = obstacles.length - 1; i >= 0; i--) {
         obstacles[i].update();
@@ -201,7 +253,7 @@ function gameLoop() {
 
         if (checkCollision(obstacles[i], rocket)) {
             gameOver = true;
-            alert('GAME OVER! Score Anda: ' + score);
+            alert('GAME OVER! Score: ' + score);
             document.location.reload();
         }
 
