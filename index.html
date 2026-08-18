@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Chroma Velocity - Cross Device</title>
+    <title>Chroma Velocity - Multi Level</title>
     <style>
         * {
             margin: 0;
@@ -47,13 +47,22 @@
             text-shadow: 0 0 8px #ff007f;
             pointer-events: none;
             z-index: 10;
+            display: flex;
+            gap: 20px;
+        }
+        .level-up {
+            color: #39ff14;
+            text-shadow: 0 0 10px #39ff14;
         }
     </style>
 </head>
 <body>
 
 <div id="game-container">
-    <div id="ui">SCORE: <span id="score">0</span></div>
+    <div id="ui">
+        <div>SCORE: <span id="score">0</span></div>
+        <div>LEVEL: <span id="level" class="level-up">1</span></div>
+    </div>
     <canvas id="gameCanvas" width="800" height="450"></canvas>
 </div>
 
@@ -61,8 +70,10 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const scoreEl = document.getElementById('score');
+const levelEl = document.getElementById('level');
 
 let score = 0;
+let level = 1;
 let gameOver = false;
 
 // Kontrol Keyboard
@@ -117,9 +128,10 @@ canvas.addEventListener('touchmove', (e) => {
 
 canvas.addEventListener('touchend', () => isTouching = false);
 
-// Partikel & Obstacle
+// Partikel, Obstacle, & Notifikasi Level Up
 const particles = [];
 const obstacles = [];
+let levelUpTextTimer = 0;
 
 class Particle {
     constructor(x, y) {
@@ -154,7 +166,8 @@ class Obstacle {
         this.x = canvas.width + 30;
         this.y = Math.random() * (canvas.height - 40) + 20;
         this.size = Math.random() * 18 + 12;
-        this.speed = Math.random() * 3 + 3.5;
+        // Kecepatan meningkat seiring naiknya level
+        this.speed = Math.random() * 3 + (3 + level * 0.8);
         this.color = '#39ff14';
     }
     update() {
@@ -174,19 +187,16 @@ class Obstacle {
 }
 
 function updateRocketPosition() {
-    // Gerakan via Keyboard
     if (keys['ArrowUp'] || keys['w']) rocket.y -= rocket.speed;
     if (keys['ArrowDown'] || keys['s']) rocket.y += rocket.speed;
     if (keys['ArrowLeft'] || keys['a']) rocket.x -= rocket.speed;
     if (keys['ArrowRight'] || keys['d']) rocket.x += rocket.speed;
 
-    // Gerakan via Touch (Interpolasi halus menuju posisi sentuhan)
     if (isTouching) {
         rocket.x += (rocket.targetX - rocket.x) * 0.15;
         rocket.y += (rocket.targetY - rocket.y) * 0.15;
     }
 
-    // Batas Layar
     rocket.x = Math.max(20, Math.min(canvas.width - 40, rocket.x));
     rocket.y = Math.max(20, Math.min(canvas.height - 20, rocket.y));
 }
@@ -210,7 +220,9 @@ function drawRocket() {
 }
 
 function spawnObstacles() {
-    if (Math.random() < 0.035) {
+    // Kemunculan rintangan makin sering seiring naiknya level
+    const spawnRate = 0.03 + (level * 0.005);
+    if (Math.random() < Math.min(spawnRate, 0.08)) {
         obstacles.push(new Obstacle());
     }
 }
@@ -228,6 +240,29 @@ function checkCollision(circle, rect) {
     let dx = distX - rect.width / 2;
     let dy = distY - rect.height / 2;
     return (dx * dx + dy * dy <= (circle.size * circle.size));
+}
+
+function updateLevel() {
+    const newLevel = Math.floor(score / 100) + 1;
+    if (newLevel !== level) {
+        level = newLevel;
+        levelEl.innerText = level;
+        levelUpTextTimer = 90; // Tampilkan teks "LEVEL UP" selama ~1.5 detik
+    }
+}
+
+function drawLevelUpNotification() {
+    if (levelUpTextTimer > 0) {
+        ctx.save();
+        ctx.font = 'bold 36px "Segoe UI", sans-serif';
+        ctx.fillStyle = '#ff007f';
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#ff007f';
+        ctx.textAlign = 'center';
+        ctx.fillText(`LEVEL ${level}!`, canvas.width / 2, canvas.height / 2);
+        ctx.restore();
+        levelUpTextTimer--;
+    }
 }
 
 function gameLoop() {
@@ -253,7 +288,7 @@ function gameLoop() {
 
         if (checkCollision(obstacles[i], rocket)) {
             gameOver = true;
-            alert('GAME OVER! Score: ' + score);
+            alert(`GAME OVER!\nScore: ${score}\nLevel: ${level}`);
             document.location.reload();
         }
 
@@ -261,8 +296,11 @@ function gameLoop() {
             obstacles.splice(i, 1);
             score += 10;
             scoreEl.innerText = score;
+            updateLevel();
         }
     }
+
+    drawLevelUpNotification();
 
     requestAnimationFrame(gameLoop);
 }
