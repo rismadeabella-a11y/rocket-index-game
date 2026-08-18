@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rocket Index Master</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #0f172a;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #game-card {
+            background-color: #1e293b;
+            padding: 24px;
+            border-radius: 12px;
+            text-align: center;
+            width: 320px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        #display-area {
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 2px dashed #334155;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .multiplier {
+            font-size: 48px;
+            font-weight: bold;
+            color: #38bdf8;
+        }
+        .status {
+            font-size: 16px;
+            margin-top: 8px;
+            color: #94a3b8;
+        }
+        .score-board {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+        button {
+            background-color: #22c55e;
+            color: #fff;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-card">
+    <h2>🚀 Rocket Index</h2>
+    <div class="score-board">Total Poin: <span>0</span></div>
+    
+    <div id="display-area">
+        <div class="multiplier">1.00x</div>
+        <div class="status">Siap Diunggah ke GitHub!</div>
+    </div>
+
+    <button>LUNCURKAN ROKET</button>
+</div>
+
+</body>
+</html>
