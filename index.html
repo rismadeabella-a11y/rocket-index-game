@@ -3,77 +3,220 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rocket Index Master</title>
+    <title>Chroma Velocity - Neon Rocket Game</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #0f172a;
-            color: #fff;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
+        * {
             margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        #game-card {
-            background-color: #1e293b;
-            padding: 24px;
-            border-radius: 12px;
-            text-align: center;
-            width: 320px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-        }
-        #display-area {
-            height: 150px;
+        body {
+            background-color: #050510;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
             display: flex;
-            flex-direction: column;
             justify-content: center;
             align-items: center;
-            border: 2px dashed #334155;
+            height: 100vh;
+        }
+        #game-container {
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.3);
+            border: 2px solid #00f0ff;
             border-radius: 8px;
-            margin-bottom: 20px;
+            overflow: hidden;
         }
-        .multiplier {
-            font-size: 48px;
-            font-weight: bold;
-            color: #38bdf8;
+        canvas {
+            display: block;
+            background: radial-gradient(circle at center, #0b0b26 0%, #020208 100%);
         }
-        .status {
-            font-size: 16px;
-            margin-top: 8px;
-            color: #94a3b8;
-        }
-        .score-board {
-            font-size: 18px;
-            margin-bottom: 16px;
-        }
-        button {
-            background-color: #22c55e;
-            color: #fff;
-            border: none;
-            padding: 12px 24px;
+        #ui {
+            position: absolute;
+            top: 15px;
+            left: 15px;
             font-size: 18px;
             font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            width: 100%;
+            text-shadow: 0 0 8px #ff007f;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
 
-<div id="game-card">
-    <h2>🚀 Rocket Index</h2>
-    <div class="score-board">Total Poin: <span>0</span></div>
-    
-    <div id="display-area">
-        <div class="multiplier">1.00x</div>
-        <div class="status">Siap Diunggah ke GitHub!</div>
-    </div>
-
-    <button>LUNCURKAN ROKET</button>
+<div id="game-container">
+    <div id="ui">SCORE: <span id="score">0</span></div>
+    <canvas id="gameCanvas" width="800" height="500"></canvas>
 </div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreEl = document.getElementById('score');
+
+let score = 0;
+let gameOver = false;
+
+// Kontrol Input
+const keys = {};
+window.addEventListener('keydown', e => keys[e.key] = true);
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+// Objek Roket Futuristik
+const rocket = {
+    x: 100,
+    y: canvas.height / 2,
+    width: 30,
+    height: 15,
+    speed: 5,
+    color: '#00f0ff'
+};
+
+// Array Partikel & Obstacle
+const particles = [];
+const obstacles = [];
+
+// Partikel Trail Neon
+class Particle {
+    constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.size = Math.random() * 4 + 2;
+        this.speedX = -Math.random() * 4 - 2;
+        this.speedY = (Math.random() - 0.5) * 2;
+        this.color = Math.random() > 0.5 ? '#ff007f' : '#00f0ff';
+        this.life = 1;
+    }
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.life -= 0.03;
+    }
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(this.life, 0);
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+// Rintangan Asteroid
+class Obstacle {
+    constructor() {
+        this.x = canvas.width + 30;
+        this.y = Math.random() * (canvas.height - 40) + 20;
+        this.size = Math.random() * 20 + 15;
+        this.speed = Math.random() * 3 + 3;
+        this.color = '#39ff14';
+    }
+    update() {
+        this.x -= this.speed;
+    }
+    draw() {
+        ctx.save();
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 12;
+        ctx.shadowColor = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+function handleInput() {
+    if (keys['ArrowUp'] || keys['w']) if (rocket.y > 20) rocket.y -= rocket.speed;
+    if (keys['ArrowDown'] || keys['s']) if (rocket.y < canvas.height - 20) rocket.y += rocket.speed;
+    if (keys['ArrowLeft'] || keys['a']) if (rocket.x > 20) rocket.x -= rocket.speed;
+    if (keys['ArrowRight'] || keys['d']) if (rocket.x < canvas.width - 40) rocket.x += rocket.speed;
+}
+
+function drawRocket() {
+    ctx.save();
+    ctx.fillStyle = rocket.color;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = rocket.color;
+    
+    // Bentuk Roket Futuristik (Segitiga Presisi)
+    ctx.beginPath();
+    ctx.moveTo(rocket.x + rocket.width, rocket.y);
+    ctx.lineTo(rocket.x, rocket.y - rocket.height / 2);
+    ctx.lineTo(rocket.x + 5, rocket.y);
+    ctx.lineTo(rocket.x, rocket.y + rocket.height / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Tambah Partikel Trail di belakang roket
+    particles.push(new Particle(rocket.x, rocket.y));
+}
+
+function spawnObstacles() {
+    if (Math.random() < 0.03) {
+        obstacles.push(new Obstacle());
+    }
+}
+
+function checkCollision(circle, rect) {
+    let distX = Math.abs(circle.x - rect.x - rect.width / 2);
+    let distY = Math.abs(circle.y - rect.y);
+
+    if (distX > (rect.width / 2 + circle.size)) return false;
+    if (distY > (rect.height / 2 + circle.size)) return false;
+
+    if (distX <= (rect.width / 2)) return true; 
+    if (distY <= (rect.height / 2)) return true;
+
+    let dx = distX - rect.width / 2;
+    let dy = distY - rect.height / 2;
+    return (dx * dx + dy * dy <= (circle.size * circle.size));
+}
+
+function gameLoop() {
+    if (gameOver) return;
+
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    handleInput();
+    drawRocket();
+
+    // Update Partikel
+    for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        particles[i].draw();
+        if (particles[i].life <= 0) particles.splice(i, 1);
+    }
+
+    // Update Obstacle & Deteksi Tabrakan
+    spawnObstacles();
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        obstacles[i].update();
+        obstacles[i].draw();
+
+        if (checkCollision(obstacles[i], rocket)) {
+            gameOver = true;
+            alert('GAME OVER! Score Anda: ' + score);
+            document.location.reload();
+        }
+
+        if (obstacles[i].x < -30) {
+            obstacles.splice(i, 1);
+            score += 10;
+            scoreEl.innerText = score;
+        }
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
 
 </body>
 </html>
